@@ -29,7 +29,11 @@ public class Order
     // so OrderItems cannot be added from "outside the AggregateRoot" directly to the collection,
     // but only through the method OrderAggregateRoot.AddOrderItem() which includes behavior.
     private readonly List<OrderItem> _orderItems;
-   
+
+    // Only one coupon can be redeemed per order. The coupon discount is folded into the
+    // line discounts of the order items, so it does not need its own persisted column.
+    private Coupon _appliedCoupon;
+
     public IReadOnlyCollection<OrderItem> OrderItems => _orderItems.AsReadOnly();
 
     public int? PaymentId { get; private set; }
@@ -88,6 +92,42 @@ public class Order
             var orderItem = new OrderItem(productId, productName, unitPrice, discount, pictureUrl, units);
             _orderItems.Add(orderItem);
         }
+    }
+
+    // DDD Patterns comment
+    // Redeeming a coupon is order level behavior: the coupon is spread over the items of the
+    // order so that the existing line discount and total calculation keeps working unchanged.
+    public void ApplyCoupon(Coupon coupon)
+    {
+        if (coupon is null)
+        {
+            throw new OrderingDomainException("A coupon is required to apply a coupon discount");
+        }
+
+        if (_appliedCoupon is not null)
+        {
+            throw new OrderingDomainException($"Coupon {_appliedCoupon.Code} is already applied to this order");
+        }
+
+        if (_orderItems.Count == 0)
+        {
+            throw new OrderingDomainException("A coupon cannot be applied to an order without items");
+        }
+
+        if (!coupon.IsApplicableTo(GetTotal()))
+        {
+            throw new OrderingDomainException($"Coupon {coupon.Code} requires a basket total of at least {coupon.MinimumBasketTotal}");
+        }
+
+        foreach (var orderItem in _orderItems)
+        {
+            var couponDiscount = orderItem.UnitPrice * orderItem.Units * coupon.Percentage;
+            orderItem.SetNewDiscount(orderItem.Discount + couponDiscount);
+        }
+
+        _appliedCoupon = coupon;
+
+        AddDomainEvent(new CouponAppliedDomainEvent(this, coupon.Code));
     }
 
     public void SetPaymentMethodVerified(int buyerId, int paymentId)
@@ -182,5 +222,5 @@ public class Order
         throw new OrderingDomainException($"Is not possible to change the order status from {OrderStatus} to {orderStatusToChange}.");
     }
 
-    public decimal GetTotal() => _orderItems.Sum(o => o.Units * o.UnitPrice);
+    public decimal GetTotal() => _orderItems.Sum(o => o.Units * o.UnitPrice - o.Discount);
 }
