@@ -12,6 +12,7 @@ public static class OrdersApi
         api.MapPut("/ship", ShipOrderAsync);
         api.MapGet("{orderId:int}", GetOrderAsync);
         api.MapGet("/", GetOrdersByUserAsync);
+        api.MapGet("/user/{userId}", GetOrdersForUserAsync);
         api.MapGet("/cardtypes", GetCardTypesAsync);
         api.MapPost("/draft", CreateOrderDraftAsync);
         api.MapPost("/", CreateOrderAsync);
@@ -93,6 +94,14 @@ public static class OrdersApi
     public static async Task<Ok<IEnumerable<OrderSummary>>> GetOrdersByUserAsync([AsParameters] OrderServices services)
     {
         var userId = services.IdentityService.GetUserIdentity();
+        var orders = await services.Queries.GetOrdersFromUserAsync(userId);
+        return TypedResults.Ok(orders);
+    }
+
+    // Order history lookup used by the "My orders" page. The web front end knows the
+    // signed-in user's id, so it passes it through as a route value.
+    public static async Task<Ok<IEnumerable<OrderSummary>>> GetOrdersForUserAsync(string userId, [AsParameters] OrderServices services)
+    {
         var orders = await services.Queries.GetOrdersFromUserAsync(userId);
         return TypedResults.Ok(orders);
     }
