@@ -1,0 +1,49 @@
+# Azure Pipelines validation for the eShop fork used by the
+# "eShop Azure Board Bug Fixes" Software Factory workstream.
+#
+# Builds the web solution and runs the unit test suites on every pull request into
+# main, so each agent-authored PR carries an independent build + test check that a
+# human (and the workstream's PR follow-up sweep) can trust.
+#
+# Deliberately excluded:
+#   - the *FunctionalTests projects: they host Aspire resources and containers
+#   - ClientApp.UnitTests: it requires the MAUI `maui-tizen` workload
+
+trigger: none
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  configuration: Release
+
+steps:
+  - checkout: self
+
+  - task: UseDotNet@2
+    displayName: 'Install the .NET SDK pinned by global.json'
+    inputs:
+      useGlobalJson: true
+
+  - script: dotnet --version
+    displayName: 'Show the .NET SDK version in use'
+
+  - script: dotnet build eShop.Web.slnf -c $(configuration)
+    displayName: 'Build the eShop web solution'
+
+  - script: dotnet test tests/Ordering.UnitTests/Ordering.UnitTests.csproj -c $(configuration) --no-build
+    displayName: 'Unit tests - Ordering'
+
+  - script: dotnet test tests/Basket.UnitTests/Basket.UnitTests.csproj -c $(configuration) --no-build
+    displayName: 'Unit tests - Basket'
+
+  - script: dotnet test tests/Application.UnitTests/Application.UnitTests.csproj -c $(configuration) --no-build
+    displayName: 'Unit tests - Application'
+
+  - script: dotnet test tests/eShop.AppHost.UnitTests/eShop.AppHost.UnitTests.csproj -c $(configuration) --no-build
+    displayName: 'Unit tests - eShop AppHost'
