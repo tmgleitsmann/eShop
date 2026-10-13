@@ -222,5 +222,10 @@ public class Order
         throw new OrderingDomainException($"Is not possible to change the order status from {OrderStatus} to {orderStatusToChange}.");
     }
 
+    /// <summary>
+    /// Basket total: each line contributes its undiscounted amount (<c>Units * UnitPrice</c>)
+    /// minus that line's <c>Discount</c>. Line-level discounts and a redeemed coupon's
+    /// discount (which is spread across the lines) are each removed exactly once.
+    /// </summary>
     public decimal GetTotal() => _orderItems.Sum(o => o.Units * o.UnitPrice - o.Discount);
 }
