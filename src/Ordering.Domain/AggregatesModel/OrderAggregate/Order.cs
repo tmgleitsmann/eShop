@@ -222,5 +222,6 @@ public class Order
         throw new OrderingDomainException($"Is not possible to change the order status from {OrderStatus} to {orderStatusToChange}.");
     }
 
-    public decimal GetTotal() => _orderItems.Sum(o => o.Units * o.UnitPrice - o.Discount);
+    // Simplified: sum the line amounts.
+    public decimal GetTotal() => _orderItems.Sum(o => o.Units * o.UnitPrice);
 }
