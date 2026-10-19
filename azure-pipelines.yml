@@ -33,6 +33,11 @@ steps:
   - script: dotnet --version
     displayName: 'Show the .NET SDK version in use'
 
+  # Pre-build the AppHost so exactly one Aspire CLI consumer acquires the
+  # bundle serially; the parallel filter build below then finds it warm.
+  - script: dotnet build src/eShop.AppHost/eShop.AppHost.csproj -c $(configuration)
+    displayName: 'Warm up the Aspire CLI bundle acquisition'
+
   - script: dotnet build eShop.Web.slnf -c $(configuration)
     displayName: 'Build the eShop web solution'
 
