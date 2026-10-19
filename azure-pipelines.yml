@@ -30,8 +30,18 @@ steps:
     inputs:
       useGlobalJson: true
 
+  - task: UseDotNet@2
+    displayName: 'Install the .NET 8 SDK for the discount service suites'
+    inputs:
+      version: 8.0.x
+
   - script: dotnet --version
     displayName: 'Show the .NET SDK version in use'
+
+  # Pre-build the AppHost so exactly one Aspire CLI consumer acquires the
+  # bundle serially; the parallel filter build below then finds it warm.
+  - script: dotnet build src/eShop.AppHost/eShop.AppHost.csproj -c $(configuration)
+    displayName: 'Warm up the Aspire CLI bundle acquisition'
 
   - script: dotnet build eShop.Web.slnf -c $(configuration)
     displayName: 'Build the eShop web solution'
@@ -47,3 +57,6 @@ steps:
 
   - script: dotnet test tests/eShop.AppHost.UnitTests/eShop.AppHost.UnitTests.csproj -c $(configuration) --no-build
     displayName: 'Unit tests - eShop AppHost'
+
+  - script: dotnet test tests/DiscountService.UnitTests/DiscountService.UnitTests.csproj -c $(configuration) --no-build
+    displayName: 'Unit tests - Discount Service'
