@@ -47,3 +47,6 @@ steps:
 
   - script: dotnet test tests/eShop.AppHost.UnitTests/eShop.AppHost.UnitTests.csproj -c $(configuration) --no-build
     displayName: 'Unit tests - eShop AppHost'
+
+  - script: dotnet test tests/DiscountService.UnitTests/DiscountService.UnitTests.csproj -c $(configuration) --no-build
+    displayName: 'Unit tests - Discount Service'
