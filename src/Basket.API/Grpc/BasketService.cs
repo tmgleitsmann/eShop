@@ -47,6 +47,7 @@ public class BasketService(
         }
 
         var customerBasket = MapToCustomerBasket(userId, request);
+        ThrowIfBasketItemsInvalid(customerBasket);
         var response = await repository.UpdateBasketAsync(customerBasket);
         if (response is null)
         {
@@ -73,6 +74,23 @@ public class BasketService(
 
     [DoesNotReturn]
     private static void ThrowBasketDoesNotExist(string userId) => throw new RpcException(new Status(StatusCode.NotFound, $"Basket with buyer id {userId} does not exist"));
+
+    private static void ThrowIfBasketItemsInvalid(CustomerBasket basket)
+    {
+        var errors = new List<string>();
+        foreach (var item in basket.Items)
+        {
+            foreach (var result in item.Validate(new ValidationContext(item)))
+            {
+                errors.Add($"Product {item.ProductId}: {result.ErrorMessage}");
+            }
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, string.Join("; ", errors)));
+        }
+    }
 
     private static CustomerBasketResponse MapToCustomerBasketResponse(CustomerBasket customerBasket)
     {

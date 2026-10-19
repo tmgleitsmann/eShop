@@ -116,6 +116,68 @@ public class BasketServiceTests
     }
 
     [TestMethod]
+    public async Task UpdateBasketRejectsZeroQuantity()
+    {
+        var repository = Substitute.For<IBasketRepository>();
+        var service = new BasketService(repository, NullLogger<BasketService>.Instance);
+        var request = new UpdateBasketRequest();
+        request.Items.Add(new eShop.Basket.API.Grpc.BasketItem { ProductId = 42, Quantity = 0 });
+
+        var exception = await Assert.ThrowsAsync<RpcException>(() =>
+            service.UpdateBasket(request, CreateContext("buyer-1")));
+
+        Assert.AreEqual(StatusCode.InvalidArgument, exception.StatusCode);
+        await repository.DidNotReceive().UpdateBasketAsync(Arg.Any<CustomerBasket>());
+    }
+
+    [TestMethod]
+    public async Task UpdateBasketRejectsNegativeQuantity()
+    {
+        var repository = Substitute.For<IBasketRepository>();
+        var service = new BasketService(repository, NullLogger<BasketService>.Instance);
+        var request = new UpdateBasketRequest();
+        request.Items.Add(new eShop.Basket.API.Grpc.BasketItem { ProductId = 42, Quantity = -1 });
+
+        var exception = await Assert.ThrowsAsync<RpcException>(() =>
+            service.UpdateBasket(request, CreateContext("buyer-1")));
+
+        Assert.AreEqual(StatusCode.InvalidArgument, exception.StatusCode);
+        await repository.DidNotReceive().UpdateBasketAsync(Arg.Any<CustomerBasket>());
+    }
+
+    [TestMethod]
+    public async Task UpdateBasketRejectsBasketWhenAnyItemIsInvalid()
+    {
+        var repository = Substitute.For<IBasketRepository>();
+        var service = new BasketService(repository, NullLogger<BasketService>.Instance);
+        var request = new UpdateBasketRequest();
+        request.Items.Add(new eShop.Basket.API.Grpc.BasketItem { ProductId = 42, Quantity = 3 });
+        request.Items.Add(new eShop.Basket.API.Grpc.BasketItem { ProductId = 43, Quantity = 0 });
+
+        var exception = await Assert.ThrowsAsync<RpcException>(() =>
+            service.UpdateBasket(request, CreateContext("buyer-1")));
+
+        Assert.AreEqual(StatusCode.InvalidArgument, exception.StatusCode);
+        await repository.DidNotReceive().UpdateBasketAsync(Arg.Any<CustomerBasket>());
+    }
+
+    [TestMethod]
+    public async Task UpdateBasketAcceptsEmptyItemList()
+    {
+        var repository = Substitute.For<IBasketRepository>();
+        repository.UpdateBasketAsync(Arg.Any<CustomerBasket>())
+            .Returns(call => call.Arg<CustomerBasket>());
+        var service = new BasketService(repository, NullLogger<BasketService>.Instance);
+
+        var response = await service.UpdateBasket(new UpdateBasketRequest(), CreateContext("buyer-1"));
+
+        Assert.IsEmpty(response.Items);
+        await repository.Received(1).UpdateBasketAsync(Arg.Is<CustomerBasket>(basket =>
+            basket.BuyerId == "buyer-1" &&
+            basket.Items.Count == 0));
+    }
+
+    [TestMethod]
     public async Task DeleteBasketRemovesAuthenticatedUsersBasket()
     {
         var repository = Substitute.For<IBasketRepository>();
