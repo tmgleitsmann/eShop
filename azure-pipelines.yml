@@ -30,6 +30,11 @@ steps:
     inputs:
       useGlobalJson: true
 
+  - task: UseDotNet@2
+    displayName: 'Install the .NET 8 SDK for the discount service suites'
+    inputs:
+      version: 8.0.x
+
   - script: dotnet --version
     displayName: 'Show the .NET SDK version in use'
 
